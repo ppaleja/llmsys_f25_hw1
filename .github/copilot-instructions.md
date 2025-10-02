@@ -41,6 +41,7 @@ This repository contains Assignment 1 for CUDA Programming with the MiniTorch fr
 - Use `shape_broadcast` to align tensor shapes in `tensorZip` and similar ops.
 - All tensor backends use contiguous C arrays (`.zeros()`, `.contiguous()`).
 - Tests employ Hypothesis strategies (`data.draw(tensors(...))`, `small_floats`, etc.) to generate random tensors.
+- No cuda code can can be run locally. All tests are done through Google Colab, i.e. not in the current environment.
 
 ## Integration Points
 
