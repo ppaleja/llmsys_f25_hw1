@@ -3,12 +3,6 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include <stdio.h>
-#include <cuda_runtime.h>
-#include <assert.h>
-#include <iostream>
-#include <sstream>
-#include <fstream>
 
 #define BLOCK_DIM 1024
 #define MAX_DIMS 10
@@ -240,30 +234,53 @@ __global__ void mapKernel(
   int global_thread_id = blockIdx.x * blockDim.x + threadIdx.x;
   if (global_thread_id >= out_size) return;
 
-    // 2. Convert the position to the out_index according to out_shape
+  // Debug: print basic thread info for first few threads
+  if (global_thread_id < 8) {
+    printf("mapKernel: thread=%d out_size=%d shape_size=%d fn_id=%d\\n", global_thread_id, out_size, shape_size, fn_id);
+  }
 
+  // 2. Convert the position to the out_index according to out_shape
   // Hint d: Consider the stride-based indexing for multidimensional tensors
   to_index(global_thread_id, out_shape, out_index, shape_size);
-    // 3. Broadcast the out_index to the in_index according to in_shape (optional in some cases)
-  broadcast_index(out_index, out_shape, in_shape, in_index, shape_size, shape_size);
-    // bool shapes_equal = true;
-    // for (int i = 0; i < shape_size; ++i) {
-    //   if (in_shape[i] != out_shape[i]) { shapes_equal = false; break; }
-    // }
-    // if (shapes_equal) {
-    //   memcpy(in_index, out_index, sizeof(int) * shape_size);
-    // } else {
-    //   broadcast_index(out_index, out_shape, in_shape, in_index, shape_size, shape_size);
-    // }
-    // 4. Calculate the position of element in in_array according to in_index and in_strides
-    int pos_in = index_to_position(in_index, in_strides, shape_size);
-    
-    // 5. Calculate the position of element in out_array according to out_index and out_strides
-    int pos_out = index_to_position(out_index, out_strides, shape_size);
 
-    // 6. Apply the unary function to the input element and write the output to the out memory
+  if (global_thread_id < 8) {
+    printf("  to_index -> out_index: ");
+    for (int i = 0; i < shape_size; ++i) {
+      printf("%d ", out_index[i]);
+    }
+    printf("\\n");
+  }
+
+  // 3. Broadcast the out_index to the in_index according to in_shape (optional in some cases)
+  broadcast_index(out_index, out_shape, in_shape, in_index, shape_size, shape_size);
+
+  if (global_thread_id < 8) {
+    printf("  broadcast -> in_index: ");
+    for (int i = 0; i < shape_size; ++i) {
+      printf("%d ", in_index[i]);
+    }
+    printf("\\n");
+  }
+
+  // 4. Calculate the position of element in in_array according to in_index and in_strides
+  int pos_in = index_to_position(in_index, in_strides, shape_size);
     
-    out[pos_out] = fn(fn_id, in_storage[pos_in]);
+  // 5. Calculate the position of element in out_array according to out_index and out_strides
+  int pos_out = index_to_position(out_index, out_strides, shape_size);
+
+  if (global_thread_id < 8) {
+    // Try to safely read the input value and print positions/values
+    float in_val = in_storage[pos_in];
+    printf("  pos_in=%d pos_out=%d in_val=%f\\n", pos_in, pos_out, in_val);
+  }
+
+  // 6. Apply the unary function to the input element and write the output to the out memory
+  float result = fn(fn_id, in_storage[pos_in]);
+  out[pos_out] = result;
+
+  if (global_thread_id < 8) {
+    printf("  wrote out[%d] = %f\\n", pos_out, result);
+  }
     /// END ASSIGN2_1
 }
 
@@ -318,43 +335,15 @@ __global__ void zipKernel(
     int a_index[MAX_DIMS];
     int b_index[MAX_DIMS];
 
-      /// BEGIN ASSIGN2_1 (with debug prints)
-      // Compute the position in the output array that this thread will write to
     /// BEGIN ASSIGN2_2
     /// TODO
     // Hints:
-      // Convert the position to the out_index according to out_shape
     // 1. Compute the position in the output array that this thread will write to
-      // Broadcast the out_index to the in_index according to in_shape
     // 2. Convert the position to the out_index according to out_shape
-      // Calculate the position of element in in_array according to in_index and in_strides
     // 3. Calculate the position of element in out_array according to out_index and out_strides
     // 4. Broadcast the out_index to the a_index according to a_shape
     // 5. Calculate the position of element in a_array according to a_index and a_strides
     // 6. Broadcast the out_index to the b_index according to b_shape
-      // Compute input size from in_shape (so we can sanity-check pos_in)
-      int in_size_local = 1;
-      for (int i = 0; i < shape_size; ++i) {
-        in_size_local *= in_shape[i];
-      }
-
-      // Sanity checks and limited debug printing (only first few threads to avoid huge logs)
-      if (global_thread_id < 16) {
-        printf("mapKernel: tid=%d pos_out=%d pos_in=%d out_size=%d in_size=%d\n", global_thread_id, pos_out, pos_in, out_size, in_size_local);
-        // print a couple of index components to help debugging
-        if (shape_size > 0) {
-          printf("  out_index[0]=%d in_index[0]=%d\n", out_index[0], in_index[0]);
-        }
-      }
-
-      // If we detect out-of-bounds positions, print a descriptive message so host-side logs will show it
-      if (pos_out < 0 || pos_out >= out_size) {
-        printf("mapKernel ERROR: tid=%d pos_out=%d out_size=%d\n", global_thread_id, pos_out, out_size);
-      }
-      if (pos_in < 0 || pos_in >= in_size_local) {
-        printf("mapKernel ERROR: tid=%d pos_in=%d in_size=%d (in_index[0]=%d)\n", global_thread_id, pos_in, in_size_local, in_index[0]);
-      }
-
     // 7.Calculate the position of element in b_array according to b_index and b_strides
     // 8. Apply the binary function to the input elements in a_array & b_array and write the output to the out memory
     
