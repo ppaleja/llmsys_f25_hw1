@@ -3,6 +3,12 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <stdio.h>
+#include <cuda_runtime.h>
+#include <assert.h>
+#include <iostream>
+#include <sstream>
+#include <fstream>
 
 #define BLOCK_DIM 1024
 #define MAX_DIMS 10
@@ -312,15 +318,43 @@ __global__ void zipKernel(
     int a_index[MAX_DIMS];
     int b_index[MAX_DIMS];
 
+      /// BEGIN ASSIGN2_1 (with debug prints)
+      // Compute the position in the output array that this thread will write to
     /// BEGIN ASSIGN2_2
     /// TODO
     // Hints:
+      // Convert the position to the out_index according to out_shape
     // 1. Compute the position in the output array that this thread will write to
+      // Broadcast the out_index to the in_index according to in_shape
     // 2. Convert the position to the out_index according to out_shape
+      // Calculate the position of element in in_array according to in_index and in_strides
     // 3. Calculate the position of element in out_array according to out_index and out_strides
     // 4. Broadcast the out_index to the a_index according to a_shape
     // 5. Calculate the position of element in a_array according to a_index and a_strides
     // 6. Broadcast the out_index to the b_index according to b_shape
+      // Compute input size from in_shape (so we can sanity-check pos_in)
+      int in_size_local = 1;
+      for (int i = 0; i < shape_size; ++i) {
+        in_size_local *= in_shape[i];
+      }
+
+      // Sanity checks and limited debug printing (only first few threads to avoid huge logs)
+      if (global_thread_id < 16) {
+        printf("mapKernel: tid=%d pos_out=%d pos_in=%d out_size=%d in_size=%d\n", global_thread_id, pos_out, pos_in, out_size, in_size_local);
+        // print a couple of index components to help debugging
+        if (shape_size > 0) {
+          printf("  out_index[0]=%d in_index[0]=%d\n", out_index[0], in_index[0]);
+        }
+      }
+
+      // If we detect out-of-bounds positions, print a descriptive message so host-side logs will show it
+      if (pos_out < 0 || pos_out >= out_size) {
+        printf("mapKernel ERROR: tid=%d pos_out=%d out_size=%d\n", global_thread_id, pos_out, out_size);
+      }
+      if (pos_in < 0 || pos_in >= in_size_local) {
+        printf("mapKernel ERROR: tid=%d pos_in=%d in_size=%d (in_index[0]=%d)\n", global_thread_id, pos_in, in_size_local, in_index[0]);
+      }
+
     // 7.Calculate the position of element in b_array according to b_index and b_strides
     // 8. Apply the binary function to the input elements in a_array & b_array and write the output to the out memory
     
