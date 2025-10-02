@@ -237,7 +237,7 @@ __global__ void mapKernel(
 
   // 2. Convert the position to the out_index according to out_shape
   // Hint d: Consider the stride-based indexing for multidimensional tensors
-  to_index(global_thread_id, out_shape, out_index, shape_size);
+  to_index(global_thread_id, out_sYhape, out_index, shape_size);
 
   // 3. Broadcast the out_index to the in_index according to in_shape (optional in some cases)
   broadcast_index(out_index, out_shape, in_shape, in_index, shape_size, shape_size);
@@ -385,11 +385,33 @@ __global__ void reduceKernel(
     /// BEGIN ASSIGN2_3
     /// TODO
     // 1. Define the position of the output element that this thread or this block will write to
-    // 2. Convert the out_pos to the out_index according to out_shape
-    // 3. Initialize the reduce_value to the output element
-    // 4. Iterate over the reduce_dim dimension of the input array to compute the reduced value
-    // 5. Write the reduced value to out memory
+    // So I think that each block computes one output element
+    int out_pos = blockIdx.x;
+    if(out_pos >= out_size) return;
     
+
+    // int global_thread_id = blockIdx.x * blockDim.x + threadIdx.x;
+    // if (global_thread_id >= out_size) return;
+
+    // 2. Convert the out_pos to the out_index according to out_shape
+    to_index(out_pos, out_shape, out_index, shape_size);
+    // 3. Initialize the reduce_value to the output element
+    float reduced_val = out[pos_out];
+    // 4. Iterate over the reduce_dim dimension of the input array to compute the reduced value
+    for(int i = 0; i < a_shape[reduce_dim]; i++) {
+        // 4.1 Compute the index of the input element to consider
+        int a_index[MAX_DIMS];
+        for(int j = 0; j < shape_size; j++) {
+            a_index[j] = out_index[j];
+        }
+        a_index[reduce_dim] = i;
+        // 4.2 Compute the position of the input element according to a_index and a_strides
+        int pos_a = index_to_position(a_index, a_strides, shape_size);
+        // 4.3 Apply the reduce function to the input element and the current reduced value
+        reduced_val = fn(fn_id, reduced_val, a_storage[pos_a]);
+    }
+    // 5. Write the reduced value to out memory
+    out[out_pos] = reduced_val;
     //assert(false && "Not Implemented");
     /// END ASSIGN2_3
 }
