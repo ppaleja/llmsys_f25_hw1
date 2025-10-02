@@ -231,20 +231,8 @@ __global__ void mapKernel(
   // Hint a: Each thread should process one element of the output tensor
   // Hint b: Use thread and block indices to calculate the global thread ID
   
-  int block_id = blockIdx.x + blockIdx.y * gridDim.x +
-                 blockIdx.z * gridDim.x * gridDim.y;
-  
-  int block_offset = block_id * blockDim.x * blockDim.y * blockDim.z;
-  int thread_offset = threadIdx.x + 
-                      threadIdx.y * blockDim.x + 
-                      threadIdx.z * blockDim.x * blockDim.y;
-  
-  int global_thread_id = block_offset + thread_offset;
-
-  // Hint c: Ensure proper bounds checking to avoid out-of-bounds memory access
-  if (global_thread_id >= out_size) {
-      return;
-  }
+  int global_thread_id = blockIdx.x * blockDim.x + threadIdx.x;   
+  if (global_thread_id >= out_size) return;
 
     // 2. Convert the position to the out_index according to out_shape
 
