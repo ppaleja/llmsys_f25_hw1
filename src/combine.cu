@@ -386,7 +386,7 @@ __global__ void reduceKernel(
     /// TODO
     // 1. Define the position of the output element that this thread or this block will write to
     // So I think that each block computes one output element
-    int out_pos = blockIdx.x;
+    int out_pos = blockIdx.x * blockDim.x + threadIdx.x;
     if(out_pos >= out_size) return;
     
 
@@ -396,7 +396,7 @@ __global__ void reduceKernel(
     // 2. Convert the out_pos to the out_index according to out_shape
     to_index(out_pos, out_shape, out_index, shape_size);
     // 3. Initialize the reduce_value to the output element
-    float reduced_val = out[pout_pos];
+    float reduced_val = out[out_pos];
     // 4. Iterate over the reduce_dim dimension of the input array to compute the reduced value
     for(int i = 0; i < a_shape[reduce_dim]; i++) {
         // 4.1 Compute the index of the input element to consider
