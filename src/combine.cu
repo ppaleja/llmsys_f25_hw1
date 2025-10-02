@@ -464,17 +464,46 @@ __global__ void MatrixMultiplyKernel(
 
 
     /// BEGIN ASSIGN2_4
+    // We're going to try to do this with tiling
+
     /// TODO
     // Hints:
     // 1. Compute the row and column of the output matrix this block will compute
-    // 2. Compute the position in the output array that this thread will write to
-    // 3. Iterate over tiles of the two input matrices, read the data into shared memory
-    // 4. Synchronize to make sure the data is available to all threads
-    // 5. Compute the output tile for this thread block
-    // 6. Synchronize to make sure all threads are done computing the output tile for (row, col)
-    // 7. Write the output to global memory
+    int row = blockIdx.y * TILE + threadIdx.y;
+    int col = blockIdx.x * TILE + threadIdx.x;
 
-    assert(false && "Not Implemented");
+
+    // 2. Compute the position in the output array that this thread will write to
+    int out_pos = index_to_position((int[]){batch, row, col}, out_strides, 3);
+
+    // 3. Iterate over tiles of the two input matrices, read the data into shared memory
+    float acc = 0.0;
+    for(int t = 0; t < (a_shape[2]/TILE); t++) {
+      a_shared[threadIdx.y][threadIdx.x] = a_storage[index_to_position((int[]){batch, row, t * TILE + threadIdx.x}, a_strides, 3)];
+      b_shared[threadIdx.y][threadIdx.x] = b_storage[index_to_position((int[]){batch, t * TILE + threadIdx.y, col}, b_strides, 3)];
+      
+      // 4. Synchronize to make sure the data is available to all threads
+      __syncthreads();
+
+      // 5. Compute the output tile for this thread block
+
+      for(int s = 0; s < TILE; s++) {
+        acc += a_shared[threadIdx.y][s] * b_shared[s][threadIdx.x];
+      }
+
+      // 6. Synchronize to make sure all threads are done computing the output tile for (row, col)
+      __syncthreads();
+
+      // 7. Write the output to global memory
+      out[out_pos] = acc;
+    }
+
+
+    
+    
+   
+
+    //assert(false && "Not Implemented");
     /// END ASSIGN2_4
 }
 
