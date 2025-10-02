@@ -218,21 +218,58 @@ __global__ void mapKernel(
    * Returns:
    *  None (Fills in out array)
    */
-
-    int out_index[MAX_DIMS];
-    int in_index[MAX_DIMS];
-    
+  
+  
+  int out_index[MAX_DIMS];
+  int in_index[MAX_DIMS];
+   
     /// BEGIN ASSIGN2_1
     /// TODO
     // Hints:
     // 1. Compute the position in the output array that this thread will write to
+
+  // Hint a: Each thread should process one element of the output tensor
+  // Hint b: Use thread and block indices to calculate the global thread ID
+  
+  int block_id = blockIdx.x + blockIdx.y * gridDim.x +
+                 blockIdx.z * gridDim.x * gridDim.y;
+  
+  int block_offset = block_id * blockDim.x * blockDim.y * blockDim.z;
+  int thread_offset = threadIdx.x + 
+                      threadIdx.y * blockDim.x + 
+                      threadIdx.z * blockDim.x * blockDim.y;
+  
+  int global_thread_id = block_offset + thread_offset;
+
+  // Hint c: Ensure proper bounds checking to avoid out-of-bounds memory access
+  if (global_thread_id >= out_size) {
+      return;
+  }
+
     // 2. Convert the position to the out_index according to out_shape
+
+  // Hint d: Consider the stride-based indexing for multidimensional tensors
+  to_index(global_thread_id, out_shape, out_index, shape_size);
     // 3. Broadcast the out_index to the in_index according to in_shape (optional in some cases)
+  broadcast_index(out_index, out_shape, in_shape, in_index, shape_size, shape_size);
+    // bool shapes_equal = true;
+    // for (int i = 0; i < shape_size; ++i) {
+    //   if (in_shape[i] != out_shape[i]) { shapes_equal = false; break; }
+    // }
+    // if (shapes_equal) {
+    //   memcpy(in_index, out_index, sizeof(int) * shape_size);
+    // } else {
+    //   broadcast_index(out_index, out_shape, in_shape, in_index, shape_size, shape_size);
+    // }
     // 4. Calculate the position of element in in_array according to in_index and in_strides
+    int pos_in = index_to_position(in_index, in_strides, shape_size);
+    
     // 5. Calculate the position of element in out_array according to out_index and out_strides
+    int pos_out = index_to_position(out_index, out_strides, shape_size);
+
     // 6. Apply the unary function to the input element and write the output to the out memory
     
-    assert(false && "Not Implemented");
+    out[pos_out] = fn(fn_id, in_storage[pos_in]);
     /// END ASSIGN2_1
 }
 
