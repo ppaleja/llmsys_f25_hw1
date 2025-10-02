@@ -237,7 +237,7 @@ __global__ void mapKernel(
 
   // 2. Convert the position to the out_index according to out_shape
   // Hint d: Consider the stride-based indexing for multidimensional tensors
-  to_index(global_thread_id, out_sYhape, out_index, shape_size);
+  to_index(global_thread_id, out_shape, out_index, shape_size);
 
   // 3. Broadcast the out_index to the in_index according to in_shape (optional in some cases)
   broadcast_index(out_index, out_shape, in_shape, in_index, shape_size, shape_size);
@@ -396,7 +396,7 @@ __global__ void reduceKernel(
     // 2. Convert the out_pos to the out_index according to out_shape
     to_index(out_pos, out_shape, out_index, shape_size);
     // 3. Initialize the reduce_value to the output element
-    float reduced_val = out[pos_out];
+    float reduced_val = out[pout_pos];
     // 4. Iterate over the reduce_dim dimension of the input array to compute the reduced value
     for(int i = 0; i < a_shape[reduce_dim]; i++) {
         // 4.1 Compute the index of the input element to consider
