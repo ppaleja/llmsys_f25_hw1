@@ -1,5 +1,6 @@
 #include <cuda_runtime.h>
 #include <assert.h>
+#include <stdio.h>
 #include <iostream>
 #include <sstream>
 #include <fstream>
@@ -234,33 +235,12 @@ __global__ void mapKernel(
   int global_thread_id = blockIdx.x * blockDim.x + threadIdx.x;
   if (global_thread_id >= out_size) return;
 
-  // Debug: print basic thread info for first few threads
-  if (global_thread_id < 8) {
-    printf("mapKernel: thread=%d out_size=%d shape_size=%d fn_id=%d\\n", global_thread_id, out_size, shape_size, fn_id);
-  }
-
   // 2. Convert the position to the out_index according to out_shape
   // Hint d: Consider the stride-based indexing for multidimensional tensors
   to_index(global_thread_id, out_shape, out_index, shape_size);
 
-  if (global_thread_id < 8) {
-    printf("  to_index -> out_index: ");
-    for (int i = 0; i < shape_size; ++i) {
-      printf("%d ", out_index[i]);
-    }
-    printf("\\n");
-  }
-
   // 3. Broadcast the out_index to the in_index according to in_shape (optional in some cases)
   broadcast_index(out_index, out_shape, in_shape, in_index, shape_size, shape_size);
-
-  if (global_thread_id < 8) {
-    printf("  broadcast -> in_index: ");
-    for (int i = 0; i < shape_size; ++i) {
-      printf("%d ", in_index[i]);
-    }
-    printf("\\n");
-  }
 
   // 4. Calculate the position of element in in_array according to in_index and in_strides
   int pos_in = index_to_position(in_index, in_strides, shape_size);
@@ -268,19 +248,9 @@ __global__ void mapKernel(
   // 5. Calculate the position of element in out_array according to out_index and out_strides
   int pos_out = index_to_position(out_index, out_strides, shape_size);
 
-  if (global_thread_id < 8) {
-    // Try to safely read the input value and print positions/values
-    float in_val = in_storage[pos_in];
-    printf("  pos_in=%d pos_out=%d in_val=%f\\n", pos_in, pos_out, in_val);
-  }
-
   // 6. Apply the unary function to the input element and write the output to the out memory
   float result = fn(fn_id, in_storage[pos_in]);
   out[pos_out] = result;
-
-  if (global_thread_id < 8) {
-    printf("  wrote out[%d] = %f\\n", pos_out, result);
-  }
     /// END ASSIGN2_1
 }
 
