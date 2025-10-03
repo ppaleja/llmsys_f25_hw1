@@ -473,14 +473,16 @@ __global__ void MatrixMultiplyKernel(
     int col = blockIdx.x * TILE + threadIdx.x;
 
 
+    if (row >= out_shape[1] || col >= out_shape[2]) return;
     // 2. Compute the position in the output array that this thread will write to
     int out_pos = index_to_position((int[]){batch, row, col}, out_strides, 3);
+    
 
     // 3. Iterate over tiles of the two input matrices, read the data into shared memory
     float acc = 0.0;
     for(int t = 0; t < (a_shape[2]/TILE); t++) {
-      a_shared[threadIdx.y][threadIdx.x] = a_storage[index_to_position((int[]){batch, row, t * TILE + threadIdx.x}, a_strides, 3)];
-      b_shared[threadIdx.y][threadIdx.x] = b_storage[index_to_position((int[]){batch, t * TILE + threadIdx.y, col}, b_strides, 3)];
+      a_shared[threadIdx.y][threadIdx.x] = a_storage[index_to_position((int[]){0, row, t * TILE + threadIdx.x}, a_strides, 3) + a_batch_stride * batch];
+      b_shared[threadIdx.y][threadIdx.x] = b_storage[index_to_position((int[]){0, t * TILE + threadIdx.y, col}, b_strides, 3) + b_batch_stride * batch];
       
       // 4. Synchronize to make sure the data is available to all threads
       __syncthreads();
