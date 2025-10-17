@@ -85,17 +85,26 @@ tests/                      # Test suite
 
 ## Usage
 
+### Setup Backend
+
+First, create a CUDA backend for tensor operations:
+```python
+import minitorch
+from minitorch import Tensor, TensorBackend
+from minitorch.cuda_kernel_ops import CudaKernelOps
+
+# Create CUDA backend
+cuda_backend = TensorBackend(CudaKernelOps)
+```
+
 ### Map Operations
 
 Map operations apply a unary function element-wise to a tensor. The operation produces a new tensor with the same shape as the input.
 
 **Example**: Applying ReLU activation
 ```python
-import minitorch
-from minitorch import Tensor
-
 # Create a tensor
-x = Tensor.make([1.0, -2.0, 3.0, -4.0], (4,), backend=minitorch.TensorBackend(minitorch.CudaKernelOps))
+x = minitorch.tensor([1.0, -2.0, 3.0, -4.0], backend=cuda_backend)
 
 # Apply ReLU (max(0, x))
 y = x.relu()  # Result: [1.0, 0.0, 3.0, 0.0]
@@ -109,19 +118,6 @@ y = x.relu()  # Result: [1.0, 0.0, 3.0, 0.0]
 - `neg()` - Negation
 - And more...
 
-### Data Layout and Strides
-
-Tensors use a stride-based memory layout to efficiently represent multidimensional arrays in contiguous memory. For a 2D tensor:
-
-```python
-# Example: 2x4 matrix
-# Memory: [1, 2, 3, 4, 5, 6, 7, 8]
-# Shape: (2, 4)
-# Strides: (4, 1)
-# Access A[i,j] = Memory[i * strides[0] + j * strides[1]]
-# Access A[1,2] = Memory[1 * 4 + 2 * 1] = Memory[6] = 7
-```
-
 ### Zip Operations
 
 Zip operations apply a binary function to corresponding elements from two input tensors. The tensors must have the same shape or be broadcastable.
@@ -129,8 +125,8 @@ Zip operations apply a binary function to corresponding elements from two input 
 **Example**: Element-wise addition
 ```python
 # Create two tensors
-a = Tensor.make([1.0, 2.0, 3.0], (3,), backend=cuda_backend)
-b = Tensor.make([4.0, 5.0, 6.0], (3,), backend=cuda_backend)
+a = minitorch.tensor([1.0, 2.0, 3.0], backend=cuda_backend)
+b = minitorch.tensor([4.0, 5.0, 6.0], backend=cuda_backend)
 
 # Element-wise addition
 c = a + b  # Result: [5.0, 7.0, 9.0]
@@ -151,8 +147,8 @@ Reduce operations aggregate elements along a specified dimension using a binary 
 **Example**: Sum along dimension
 ```python
 # Create a 2D tensor
-x = Tensor.make([[1.0, 2.0, 3.0], 
-                 [4.0, 5.0, 6.0]], (2, 3), backend=cuda_backend)
+x = minitorch.tensor([[1.0, 2.0, 3.0], 
+                      [4.0, 5.0, 6.0]], backend=cuda_backend)
 
 # Sum along dimension 1 (columns)
 y = x.sum(1)  # Result: [6.0, 15.0]
@@ -176,10 +172,10 @@ High-performance GPU-accelerated matrix multiplication, one of the most critical
 **Example**: Matrix multiplication
 ```python
 # Create two matrices
-A = Tensor.make([[1.0, 2.0], 
-                 [3.0, 4.0]], (2, 2), backend=cuda_backend)
-B = Tensor.make([[5.0, 6.0], 
-                 [7.0, 8.0]], (2, 2), backend=cuda_backend)
+A = minitorch.tensor([[1.0, 2.0], 
+                      [3.0, 4.0]], backend=cuda_backend)
+B = minitorch.tensor([[5.0, 6.0], 
+                      [7.0, 8.0]], backend=cuda_backend)
 
 # Matrix multiplication
 C = A @ B  # Result: [[19.0, 22.0], [43.0, 50.0]]
@@ -247,6 +243,8 @@ The CUDA kernels support the following functions (mapped via function IDs):
 
 - **Thread Configuration**: Uses 32 threads per block by default (configurable via `THREADS_PER_BLOCK`)
 - **Memory Layout**: Stride-based indexing for flexible multidimensional tensor representation
+  - For a 2D tensor: `A[i,j] = Memory[i * strides[0] + j * strides[1]]`
+  - Example: Shape (2, 4), Strides (4, 1) → A[1,2] = Memory[1 × 4 + 2 × 1] = Memory[6]
 - **Broadcasting**: Automatic shape broadcasting for compatible operations
 - **Error Handling**: Bounds checking in kernels to prevent memory access violations
 
