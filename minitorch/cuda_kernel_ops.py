@@ -15,8 +15,9 @@ from pycuda.compiler import SourceModule
 import pycuda.autoinit
 
 # Load the shared library
+lib_path = os.path.join(os.path.dirname(__file__), "cuda_kernels", "combine.so")
 try:
-    lib = ctypes.CDLL("minitorch/cuda_kernels/combine.so")
+    lib = ctypes.CDLL(lib_path)
 except:
     print("cuda kernels not implemented: combine.so not found")
 
